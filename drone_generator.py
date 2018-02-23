@@ -37,16 +37,17 @@ configurations = it.product(sizes, drones_images, bird_images, bg_video, grid)
 gen = 0
 saved_configs = []
 
+acceptance_ratio = float(max_configurations / total_configurations)
 for config in configurations:
     # 8 foreach (d, g, s, v) ∈ D × G × S × V do
 
-    print(config)
+    # print(config)
 
     # 9 ignore this configuration with probability
     # p = 1 − Max. allowed size/ Total size for all configurations , and continue
     accept_config = np.random.choice(a=[False, True],
-                                     p=[1.0 - float(max_configurations / total_configurations),
-                                        float(max_configurations / total_configurations)]
+                                     p=[1.0 - acceptance_ratio,
+                                        acceptance_ratio]
                                      )
 
     gen += 1  # Generation counter
@@ -62,7 +63,8 @@ for config in configurations:
         s = sizes[np.random.random_integers(0, 9)]  # TODO choose at random from pre defined intervals
         # currently picking random index.
 
-        print(gen, accept_config, d, b, s, max_configurations, total_configurations)
+        # print(gen, accept_config, d, b, s, max_configurations, total_configurations)
+        print(gen, accept_config, config)
         # 10 draw a random position p0 in g
         # 11 draw a random size s0 for smaller edge of the
         # drone from s
@@ -91,7 +93,7 @@ for config in configurations:
         saved_configs.append(config)
 # 31 end
 
-print(1.0 - float(max_configurations / total_configurations))
+print("rejection probability", 1.0 - acceptance_ratio, "accept probability", acceptance_ratio)
 print(saved_configs.__len__())
 
 # TODO ndarry.choose??
