@@ -1,3 +1,5 @@
+import itertools as it
+
 import numpy as np
 
 # Algorithm 1: The algorithm for preparing the dataset.
@@ -27,15 +29,37 @@ sizes = np.random.uniform(5, 160, 20).reshape(10, 2)
 # TODO ndarry.choose???
 print(sizes, sizes.shape)
 
-for iter in range(10):
+total_configurations = grid.__len__() * sizes.__len__() * drones_images.__len__() * bird_images.__len__()
+max_allowed_configurations = 1000
+
+# Generator of possible configurations
+configurations = it.product(drones_images, bird_images, sizes, grid)
+
+gen = 0
+saved_configs = []
+for config in configurations:
+    # 8 foreach (d, g, s, v) ∈ D × G × S × V do
     d = np.random.choice(drones_images)
     b = np.random.choice(bird_images)
-    s = sizes[np.random.random_integers(10)]  # TODO MAKE MORE RANDOM
-    print(d, b, s)
+    s = sizes[np.random.random_integers(0, 9)]  # TODO MAKE MORE RANDOM
+    # 9 ignore this configuration with probability
+    # p = 1 − Max. allowed size/ Total size for all configurations , and continue
+    accept_config = np.random.choice([False, True],
+                                     p=[1.0 - float(max_allowed_configurations / total_configurations),
+                                        float(max_allowed_configurations / total_configurations)
+                                        ]
+                                     )
 
-# 8 foreach (d, g, s, v) ∈ D × G × S × V do
-# 9 ignore this configuration with probability
-# p = 1 − Max. allowed size/ Total size for all configurations , and continue
+    gen += 1
+
+    if not accept_config:
+        print(gen, accept_config)
+    else:
+        print(gen, accept_config, d, b, s, max_allowed_configurations, total_configurations)
+        saved_configs.append(config)
+
+print(1.0 - float(max_allowed_configurations / total_configurations))
+print(saved_configs.__len__())
 # 10 draw a random position p0 in g
 # 11 draw a random size s0 for smaller edge of the
 # drone from s
