@@ -32,7 +32,7 @@ total_configurations = len(sizes) * len(drones_images) * len(bird_images) * len(
 max_configurations = 1000
 
 # Generator of possible configurations
-configurations = it.product(drones_images, bird_images, sizes, grid)
+configurations = it.product(sizes, drones_images, bird_images, bg_video, grid)
 
 gen = 0
 saved_configs = []
