@@ -15,7 +15,7 @@ drones_images = ["drone3", "drone2", "drone1"]
 bird_images = ["bird1", "bird2", "bird3"]
 
 # 4 V ← background videos
-bg_video = []
+bg_video = ["vid1", "vid2", "vid3"]
 
 # 5 R ← # of rows that the image will be divided into
 num_rows = 12
@@ -39,9 +39,9 @@ saved_configs = []
 
 for config in configurations:
     # 8 foreach (d, g, s, v) ∈ D × G × S × V do
-    d = np.random.choice(drones_images)
-    b = np.random.choice(bird_images)
-    s = sizes[np.random.random_integers(0, 9)]  # TODO MAKE MORE RANDOM
+
+    print(config)
+
     # 9 ignore this configuration with probability
     # p = 1 − Max. allowed size/ Total size for all configurations , and continue
     accept_config = np.random.choice([False, True],
@@ -50,11 +50,19 @@ for config in configurations:
                                         ]
                                      )
 
-    gen += 1
+    gen += 1  # Generation counter
 
     if not accept_config:
         print(gen, accept_config)
     else:
+        # TODO this shouldn't be random? why? does it matter?
+        d = np.random.choice(drones_images)
+
+        b = np.random.choice(bird_images)
+
+        s = sizes[np.random.random_integers(0, 9)]  # TODO choose at random from pre defined intervals
+        # currently picking random index.
+
         print(gen, accept_config, d, b, s, max_configurations, total_configurations)
         # 10 draw a random position p0 in g
         # 11 draw a random size s0 for smaller edge of the
