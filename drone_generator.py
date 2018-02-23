@@ -46,9 +46,7 @@ for config in configurations:
     # 9 ignore this configuration with probability
     # p = 1 − Max. allowed size/ Total size for all configurations , and continue
     accept_config = np.random.choice(a=[False, True],
-                                     p=[1.0 - acceptance_ratio,
-                                        acceptance_ratio]
-                                     )
+                                     p=[1.0 - acceptance_ratio, acceptance_ratio])
 
     gen += 1  # Generation counter
 
