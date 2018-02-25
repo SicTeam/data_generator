@@ -51,18 +51,21 @@ for config in configurations:
     gen += 1  # Generation counter
 
     if not accept_config:
-        print(gen, accept_config)
+        accept_config = False
+        # print(gen, accept_config)
     else:
         # TODO this shouldn't be random? why? does it matter?
         d = np.random.choice(drones_images)
 
         b = np.random.choice(bird_images)
 
-        s = sizes[np.random.random_integers(0, 9)]  # TODO choose at random from pre defined intervals
+        # s = sizes[np.random.random_integers(0, 9)]  # TODO choose at random from pre defined intervals
         # currently picking random index.
-
+        # TODO random size from selected interval?
+        s = np.random.uniform(low=sizes[0][0], high=sizes[0][1])
+        print(gen, s, d, b)
         # print(gen, accept_config, d, b, s, max_configurations, total_configurations)
-        print(gen, accept_config, config)
+        # print(gen, accept_config, config)
         # 10 draw a random position p0 in g
         # 11 draw a random size s0 for smaller edge of the
         # drone from s
