@@ -137,3 +137,4 @@ venv.bak/
 pyvenv.cfg
 pip-selfcheck.json
 
+/extracted_drones/
