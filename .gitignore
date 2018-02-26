@@ -138,3 +138,4 @@ pyvenv.cfg
 pip-selfcheck.json
 
 /extracted_drones/
+/unprocessed_drones/
