@@ -7,8 +7,9 @@ if __name__ == '__main__':
 
     # == Parameters =======================================================================
     BLUR = 21
+    GAUSSBLUR = 5
     CANNY_THRESH_1 = 10
-    CANNY_THRESH_2 = 200
+    CANNY_THRESH_2 = 100
     MASK_DILATE_ITER = 10
     MASK_ERODE_ITER = 10
     MASK_COLOR = (0.0, 0.0, 1.0)  # In BGR format
@@ -20,15 +21,16 @@ if __name__ == '__main__':
     result_dir = './extracted_drones/'
     source_images = [f for f in os.listdir(source_dir) if os.path.isfile(os.path.join(source_dir, f))]
 
-    if len(os.listdir(result_dir)) > 0:
-        print("Result directory non empty exiting")
-        exit(1)
+    # if len(os.listdir(result_dir)) > 0:
+    #     print("Result directory non empty exiting")
+    #     exit(1)
 
     for source_image in source_images:
         img = cv2.imread(source_dir + source_image)
         if img == None:
             continue
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        blurred = cv2.GaussianBlur(img, (GAUSSBLUR, GAUSSBLUR), 0)
+        gray = cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
 
         # -- Edge detection -------------------------------------------------------------------
         edges = cv2.Canny(gray, CANNY_THRESH_1, CANNY_THRESH_2)
@@ -83,7 +85,8 @@ if __name__ == '__main__':
         #
 
         # save to disk
-        result_image = result_dir + os.path.splitext(source_image)[0] + 'nobg' + '.png'
+        result_image = result_dir + os.path.splitext(source_image)[
+            0] + 'nobg' + '-' + str(GAUSSBLUR) + '-' + str(CANNY_THRESH_1) + '-' + str(CANNY_THRESH_2) + '-' + str(BLUR) + '.png'
         print("From: ", source_image, "To: ", result_image)
         cv2.imwrite(result_image, img_a * 255)
         #
