@@ -1,3 +1,7 @@
+# This is a helper script to automate the removal of backgrounds from drone images.
+
+
+
 import os as os
 
 import cv2
@@ -17,13 +21,9 @@ if __name__ == '__main__':
     # == Processing =======================================================================
 
     # -- Read images -----------------------------------------------------------------------
-    source_dir = './unprocessed_drones/'
-    result_dir = './extracted_drones/'
+    source_dir = './unprocessed_drones/'  # TODO make an argument
+    result_dir = './extracted_drones/'  # TODO make an argument
     source_images = [f for f in os.listdir(source_dir) if os.path.isfile(os.path.join(source_dir, f))]
-
-    # if len(os.listdir(result_dir)) > 0:
-    #     print("Result directory non empty exiting")
-    #     exit(1)
 
     for source_image in source_images:
         img = cv2.imread(source_dir + source_image)
@@ -67,28 +67,14 @@ if __name__ == '__main__':
         masked = (mask_stack * img) + ((1 - mask_stack) * MASK_COLOR)  # Blend
         masked = (masked * 255).astype('uint8')  # Convert back to 8-bit
 
-        # cv2.imshow('img', masked)                                   # Display
-        # cv2.waitKey()
-
-        # cv2.imwrite('C:/Temp/person-masked.jpg', masked)           # Save
-
         # split image into channels
         c_red, c_green, c_blue = cv2.split(img)
 
         # merge with mask got on one of a previous steps
         img_a = cv2.merge((c_red, c_green, c_blue, mask.astype('float32') / 255.0))
 
-        # show on screen (optional in jupiter)
-        # %matplotlib inline
-        # plt.imshow(img_a)
-        # plt.show()
-        #
-
         # save to disk
         result_image = result_dir + os.path.splitext(source_image)[
             0] + 'nobg' + '-' + str(GAUSSBLUR) + '-' + str(CANNY_THRESH_1) + '-' + str(CANNY_THRESH_2) + '-' + str(BLUR) + '.png'
         print("From: ", source_image, "To: ", result_image)
         cv2.imwrite(result_image, img_a * 255)
-        #
-        # # or the same using plt
-        # plt.imsave('girl_2.png', img_a)

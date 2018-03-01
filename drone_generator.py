@@ -38,6 +38,7 @@ gen = 0
 saved_configs = []
 
 acceptance_ratio = float(max_configurations / total_configurations)
+
 for config in configurations:
     # 8 foreach (d, g, s, v) ∈ D × G × S × V do
 
