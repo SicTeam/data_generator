@@ -1,21 +1,31 @@
 import itertools as it
-
+import os
 import numpy as np
+import pandas as pd
+from PIL import Image
+from itertools import *
 
 # Algorithm 1: The algorithm for preparing the dataset.
 # 1 S ← predefined size intervals
-# TODO numpy choice with probability
-# TODO how to skew results towards lower numbers
-sizes = np.random.uniform(5, 160, 20).reshape(10, 2)
+sz_upper_bound = 160
+sz_lower_bound = 5
+sz_interval_length = sz_upper_bound - sz_lower_bound
+sz_mid_point = int(sz_interval_length / 2)
+bins = np.concatenate((pd.cut(np.arange(sz_lower_bound, sz_mid_point), 14, retbins=True)[1],
+                       pd.cut(np.arange(sz_mid_point, sz_upper_bound), 5, retbins=True)[1]))
+size_intervals = [(bins[i], bins[i + 1]) for i in range(len(bins) - 1)]
+# print(sizes, len(sizes))
 
 # 2 D ← foregrounds of drone images
-drones_images = ["drone3", "drone2", "drone1"]
+# drones_images = ["drone3", "drone2", "drone1"]
+drones_images = os.listdir('./drones')
 
 # 3 B ← foregrounds of bird images
-bird_images = ["bird1", "bird2", "bird3"]
+bird_images = os.listdir('./birds')
 
 # 4 V ← background videos
-bg_video = ["vid1", "vid2", "vid3"]
+bg_video = ["vid1", "vid2", "vid3", "vid4", "vid5"]
+bg_video_dim = (800,800)
 
 # 5 R ← # of rows that the image will be divided into
 num_rows = 12
@@ -24,21 +34,26 @@ num_rows = 12
 num_cols = 10
 
 # 7 G ← R × C grid
-grid = [(row, col) for row in range(num_rows) for col in range(num_cols)]
+grid_img_row = int(bg_video_dim[0]/num_rows)
+grid_img_col = int(bg_video_dim[1]/num_cols)
+
+grid = [(row, col) for row in range(0, bg_video_dim[0], grid_img_row) for col in range(0, bg_video_dim[1],grid_img_col)]
 
 plane_images = []  # Extra negative image examples
 
-total_configurations = len(sizes) * len(drones_images) * len(bird_images) * len(bg_video) * len(grid)
-max_configurations = 1000
+total_configurations = len(drones_images) * len(grid) * len(size_intervals) * len(bg_video)
+max_configurations = 500
 
 # Generator of possible configurations
-configurations = it.product(sizes, drones_images, bird_images, bg_video, grid)
+configurations = it.product(drones_images, grid, size_intervals, bg_video)
 
 gen = 0
+saved_config_counter = 0
 saved_configs = []
 
 acceptance_ratio = float(max_configurations / total_configurations)
 
+# for config in configurations:
 for config in configurations:
     # 8 foreach (d, g, s, v) ∈ D × G × S × V do
 
@@ -51,20 +66,25 @@ for config in configurations:
 
     gen += 1  # Generation counter
 
+    if gen > 100000:
+        break
+
     if not accept_config:
-        accept_config = False
         # print(gen, accept_config)
+        continue
     else:
         # TODO this shouldn't be random? why? does it matter?
-        d = np.random.choice(drones_images)
 
+        # Unpack configuration : (d, g, s, v)
+        d, g, s, v = config
+
+        s0 = np.random.uniform((s))
         b = np.random.choice(bird_images)
+        #TODO RANDOM POINT x,y = g range(x, x+80), range(y,y+80)
 
+        # print(d, g, s, v)
         # s = sizes[np.random.random_integers(0, 9)]  # TODO choose at random from pre defined intervals
-        # currently picking random index.
-        # TODO random size from selected interval?
-        s = np.random.uniform(low=sizes[0][0], high=sizes[0][1])
-        print(gen, s, d, b)
+        # s = np.random.uniform(low=size_intervals[0][0], high=size_intervals[0][1])
         # print(gen, accept_config, d, b, s, max_configurations, total_configurations)
         # print(gen, accept_config, config)
         # 10 draw a random position p0 in g
@@ -73,10 +93,11 @@ for config in configurations:
         # 12 draw a random frame f0 from v
         # 13 resize d with respect to s0
         # 14 overlay f0 with d in position p0
+
         # 15 draw (p1, s1, f1) in the same way
-        # 16 draw a random bird b0 from B
-        # 17 draw (pb,0, sb,0) for bird where sb,0 is drawn from
-        # smaller half of S
+        # 16    draw a random bird b0 from B
+        # 17    draw (pb,0, sb,0) for bird where sb,0 is drawn from
+        #           smaller half of S
         # 18 resize d with respect to s1
         # 19 overlay f1 with d in position p1
         # 20 resize b0 with respect to sb,0
@@ -92,10 +113,14 @@ for config in configurations:
         # 29
 
         # 30 save f0, f1, f2 into the dataset
+        # print(config)
         saved_configs.append(config)
+        saved_config_counter+= 1
+        # print(saved_config_counter, gen, s, d, b)
+        # print(gen)
 # 31 end
 
 print("rejection probability", 1.0 - acceptance_ratio, "accept probability", acceptance_ratio)
-print(saved_configs.__len__())
+print(saved_configs.__len__(), "of", total_configurations, "total configurations selected")
 
 # TODO ndarry.choose??
