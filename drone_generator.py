@@ -24,7 +24,7 @@ drones_images = os.listdir('./drones')
 bird_images = os.listdir('./birds')
 
 # 4 V ← background videos
-bg_video = ["vid1", "vid2", "vid3", "vid4", "vid5"]
+bg_video = os.listdir('./backgrounds')
 bg_video_dim = (800,800)
 
 # 5 R ← # of rows that the image will be divided into
@@ -34,10 +34,10 @@ num_rows = 12
 num_cols = 10
 
 # 7 G ← R × C grid
-grid_img_row = int(bg_video_dim[0]/num_rows)
-grid_img_col = int(bg_video_dim[1]/num_cols)
+grid_img_col = int(bg_video_dim[0]/num_cols)
+grid_img_row = int(bg_video_dim[1]/num_rows)
 
-grid = [(row, col) for row in range(0, bg_video_dim[0], grid_img_row) for col in range(0, bg_video_dim[1],grid_img_col)]
+grid = [(row, col) for row in range(0, bg_video_dim[1], grid_img_row) for col in range(0, bg_video_dim[0],grid_img_col)]
 
 plane_images = []  # Extra negative image examples
 
@@ -66,8 +66,8 @@ for config in configurations:
 
     gen += 1  # Generation counter
 
-    if gen > 10000:
-        break
+    # if gen > 10000:
+    #     break
 
     if not accept_config:
         # print(gen, accept_config)
@@ -83,7 +83,7 @@ for config in configurations:
         b = np.random.choice(bird_images)
         #TODO RANDOM POINT x,y = g range(x, x+80), range(y,y+80)
 
-        # print(d, g, s, v)
+        print(d, g, s, v)
         # 10 draw a random position p0 in g
         # 11 draw a random size s0 for smaller edge of the drone from s
         # 12 draw a random frame f0 from v
