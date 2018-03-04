@@ -14,7 +14,7 @@ sz_mid_point = int(sz_interval_length / 2)
 bins = np.concatenate((pd.cut(np.arange(sz_lower_bound, sz_mid_point), 14, retbins=True)[1],
                        pd.cut(np.arange(sz_mid_point, sz_upper_bound), 5, retbins=True)[1]))
 size_intervals = [(bins[i], bins[i + 1]) for i in range(len(bins) - 1)]
-# print(sizes, len(sizes))
+# print(size_intervals, len(size_intervals))
 
 # 2 D ← foregrounds of drone images
 # drones_images = ["drone3", "drone2", "drone1"]
@@ -66,7 +66,7 @@ for config in configurations:
 
     gen += 1  # Generation counter
 
-    if gen > 100000:
+    if gen > 10000:
         break
 
     if not accept_config:
@@ -78,34 +78,29 @@ for config in configurations:
         # Unpack configuration : (d, g, s, v)
         d, g, s, v = config
 
-        s0 = np.random.uniform((s))
+        s0 = np.random.uniform(low=s[0], high=s[1])
+        # print(s, s0)
         b = np.random.choice(bird_images)
         #TODO RANDOM POINT x,y = g range(x, x+80), range(y,y+80)
 
         # print(d, g, s, v)
-        # s = sizes[np.random.random_integers(0, 9)]  # TODO choose at random from pre defined intervals
-        # s = np.random.uniform(low=size_intervals[0][0], high=size_intervals[0][1])
-        # print(gen, accept_config, d, b, s, max_configurations, total_configurations)
-        # print(gen, accept_config, config)
         # 10 draw a random position p0 in g
-        # 11 draw a random size s0 for smaller edge of the
-        # drone from s
+        # 11 draw a random size s0 for smaller edge of the drone from s
         # 12 draw a random frame f0 from v
         # 13 resize d with respect to s0
         # 14 overlay f0 with d in position p0
 
         # 15 draw (p1, s1, f1) in the same way
-        # 16    draw a random bird b0 from B
-        # 17    draw (pb,0, sb,0) for bird where sb,0 is drawn from
-        #           smaller half of S
+        # 16 draw a random bird b0 from B
+        # 17 draw (pb,0, sb,0) for bird where sb,0 is drawn from smaller half of S
         # 18 resize d with respect to s1
         # 19 overlay f1 with d in position p1
         # 20 resize b0 with respect to sb,0
         # 21 overlay f1 with b0 in position pb,0
+
         # 22 draw (p2, s2, f2) in the same way
         # 23 draw a random bird b1 from B
-        # 24 draw (pb,1, sb,1) for bird where sb,1 is drawn from
-        # greater half of S
+        # 24 draw (pb,1, sb,1) for bird where sb,1 is drawn from greater half of S
         # 25 resize d with respect to s2
         # 26 overlay f2 with d in position p2
         # 27 resize b1 with respect to sb,1
