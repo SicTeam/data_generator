@@ -3,6 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 from PIL import Image
+import cv2
 from itertools import *
 
 # Algorithm 1: The algorithm for preparing the dataset.
@@ -18,13 +19,21 @@ size_intervals = [(bins[i], bins[i + 1]) for i in range(len(bins) - 1)]
 
 # 2 D ← foregrounds of drone images
 # drones_images = ["drone3", "drone2", "drone1"]
-drones_images = os.listdir('./drones')
+drones_path = './' + 'drones' + '/'
+# drones_images = os.listdir(drones_path)
+drones_images = [drones_path + f for f in os.listdir(drones_path)]
 
 # 3 B ← foregrounds of bird images
-bird_images = os.listdir('./birds')
+birds_path = './' + 'birds' +'/'
+# bird_images = os.listdir('./birds')
+birds_images = [birds_path + f for f in os.listdir(birds_path)]
 
 # 4 V ← background videos
-bg_video = os.listdir('./backgrounds')
+bg_videos_path = './' + 'backgrounds' + '/'
+# bg_videos = os.listdir('./backgrounds')
+bg_videos = [bg_videos_path + f for f in os.listdir(bg_videos_path)]
+
+
 bg_video_dim = (800,800)
 
 # 5 R ← # of rows that the image will be divided into
@@ -34,18 +43,22 @@ num_rows = 12
 num_cols = 10
 
 # 7 G ← R × C grid
-grid_img_col = int(bg_video_dim[0]/num_cols)
-grid_img_row = int(bg_video_dim[1]/num_rows)
 
-grid = [(row, col) for row in range(0, bg_video_dim[1], grid_img_row) for col in range(0, bg_video_dim[0],grid_img_col)]
+# Building the grid outside of the main loop requires
+# assuming the bg_video_dim is the same for all videos
+# and known before data generation
+grid_img_row = int(bg_video_dim[0]/num_rows)
+grid_img_col = int(bg_video_dim[1]/num_cols)
 
-plane_images = []  # Extra negative image examples
+grid = [(row, col) for row in range(0, bg_video_dim[0], grid_img_row) for col in range(0, bg_video_dim[1],grid_img_col)]
 
-total_configurations = len(drones_images) * len(grid) * len(size_intervals) * len(bg_video)
+# plane_images = []  # Extra negative image examples
+
+total_configurations = len(drones_images) * len(grid) * len(size_intervals) * len(bg_videos)
 max_configurations = 500
 
 # Generator of possible configurations
-configurations = it.product(drones_images, grid, size_intervals, bg_video)
+configurations = it.product(drones_images, grid, size_intervals, bg_videos)
 
 gen = 0
 saved_config_counter = 0
@@ -80,8 +93,28 @@ for config in configurations:
 
         s0 = np.random.uniform(low=s[0], high=s[1])
         # print(s, s0)
-        b = np.random.choice(bird_images)
+        b = np.random.choice(birds_images)
+
         #TODO RANDOM POINT x,y = g range(x, x+80), range(y,y+80)
+        bg = cv2.VideoCapture(v)  # says we capture an image from a webcam
+        fps = bg.get(cv2.CAP_PROP_FPS)
+        frame_count = bg.get(cv2.CAP_PROP_FRAME_COUNT)
+        width = bg.get(cv2.CAP_PROP_FRAME_WIDTH)
+        height = bg.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        print("fps: %f, frames: %d, width: %d, height: %d " % (fps, frame_count, width, height))
+        _, cv2_im = bg.read()
+        cv2_im = cv2.cvtColor(cv2_im, cv2.COLOR_BGR2RGB)
+        pil_im = Image.fromarray(cv2_im)
+        # pil_im.show()
+
+        random_frame = np.random.randint(frame_count)
+        bg.set(cv2.CAP_PROP_POS_FRAMES, random_frame)
+        _, cv2_im2 = bg.read()
+        cv2_im2 = cv2.cvtColor(cv2_im2, cv2.COLOR_BGR2RGB)
+        # pil_im2 = Image.fromarray(cv2_im2)
+        # pil_im2.show()
+
+        bg.release()
 
         print(d, g, s, v)
         # 10 draw a random position p0 in g
