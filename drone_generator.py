@@ -62,17 +62,20 @@ max_configurations = 5000
 configurations = it.product(drones_images, grid, size_intervals, bg_videos)
 
 gen = 0
-saved_config_counter = 0
+saved_config_cnt = 0
 saved_configs = []
 today = datetime.today()
-output_dir = './output_images-' + today.strftime("%Y-%m-%d_%H:%M:%S") + '/'
+output_dir = './output-' + today.strftime("%Y-%m-%d_%H:%M:%S") + '/'
+pos_img_dir = 'pos_images/'
+neg_img_dir = 'neg_images/'
 
 try:
-    os.mkdir(output_dir)
+    os.mkdir(output_dir)  # TODO tidy these up
+    os.mkdir(output_dir + pos_img_dir)
+    os.mkdir(output_dir + neg_img_dir)  # needed for haar cascade specifically
 except FileExistsError as e:
     print("Output folder '%s' already exists, exiting..." % e.filename)
     exit(1)
-
 
 acceptance_ratio = float(max_configurations / total_configurations)
 
@@ -87,7 +90,7 @@ def frame_grabber(src_video):
     frame_number = np.random.randint(frame_count)
     bg.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
     _, cv2_im = bg.read()
-    cv2_im = cv2.cvtColor(cv2_im, cv2.COLOR_BGR2RGB)
+    # cv2_im = cv2.cvtColor(cv2_im, cv2.COLOR_BGR2RGB)
     bg.release()
     print("fps: %f, frames: %d, width: %d, height: %d " % (fps, frame_count, width, height))
     return width, height, frame_number, cv2_im
@@ -143,7 +146,7 @@ def paste_object(object_to_paste, background, position):
         print(alpha_background[:int(y2 - y1), :int(x2 - x1)].shape)
         pass
 
-    return position, background, bg_region
+    return (position[1], position[0]), background, bg_region
 
 
 def load_and_resize(obj_file_name, target_size):
@@ -160,10 +163,22 @@ def load_and_resize(obj_file_name, target_size):
     return obj, obj.shape[0], obj.shape[1]
 
 
+def save_frame(frame, number, config_number, location, shape, positive):
+    x, y = location
+    height, width = shape
+    if positive:
+        img_dir = pos_img_dir
+    else:
+        img_dir = neg_img_dir
+    filename = str(config_number) + '-f' + str(number) + '.png'
+    cv2.imwrite(output_dir + pos_img_dir + filename, frame)
+    return "%s%s 1 %s %s %s %s\n" % (img_dir, filename, x, y, width, height)
+
+
 if __name__ == '__main__':
 
     t0 = time.time()  # Start Time
-    annotation_file = open(output_dir)
+    annotation_file = open(output_dir + "drone.txt", 'w')
     for config in configurations:
         # 8 foreach (d, g, s, v) ∈ D × G × S × V do
 
@@ -171,12 +186,12 @@ if __name__ == '__main__':
 
         # 9 ignore this configuration with probability
         # p = 1 − Max. allowed size/ Total size for all configurations , and continue
-        accept_config = np.random.choice(a=[False, True],
-                                         p=[1.0 - acceptance_ratio, acceptance_ratio])
+        accept_config = True  # np.random.choice(a=[False, True],
+        #   p=[1.0 - acceptance_ratio, acceptance_ratio])
 
         gen += 1  # Generation counter
 
-        if gen > 10000:
+        if gen > 10:
             break
 
         if not accept_config:
@@ -190,7 +205,7 @@ if __name__ == '__main__':
             # v - background video filename
             d, g, s, v = config
 
-            print(d, g, s, v)
+            # print(d, g, s, v)
 
             # 10 draw a random position p0 in g
             # 11 draw a random size s0 for smaller edge of the drone from s
@@ -201,8 +216,6 @@ if __name__ == '__main__':
 
             # 13 resize d with respect to s0
             d0, drone_w, drone_h = load_and_resize(d, s0)
-
-            # TODO SAVE Boundingbox format top corner x y width height
 
             # 14 overlay f0 with d in position p0
             d0_loc, f0, d0_shape = paste_object(d0, f0, p0)
@@ -218,9 +231,8 @@ if __name__ == '__main__':
             # 17 draw (pb,0, sb,0) for bird where sb,0 is drawn from smaller half of S
             sz_mid_idx = int(len(size_intervals) / 2) + 1
             sb_lower = size_intervals[:sz_mid_idx][np.random.randint(low=0, high=sz_mid_idx)]
-            # print(len(size_intervals))
             sb_upper = size_intervals[sz_mid_idx:][np.random.randint(low=0, high=len(size_intervals) - sz_mid_idx)]
-            # print(sb_lower, sb_upper)
+
             pb0, sb0 = get_pos_and_size(gb0, sb_lower)
 
             # 18 resize d with respect to s1
@@ -259,29 +271,25 @@ if __name__ == '__main__':
             _, f1, _ = paste_object(bird1, f1, pb1)
 
             # 30 save f0, f1, f2 into the data set
-
-            # Protects against overflow of images
-            # TODO make this a debug only option
-            # if saved_config_counter < 5:
-            #     im0 = Image.fromarray(f0)
-            #     im0.show()
-            #     im1 = Image.fromarray(f1)
-            #     im1.show()
-            #     im2 = Image.fromarray(f2)
-            #     im2.show()
-            #     TODO Build better filename similar to below
-            # out_file_name = './'+str(config) + 'f0' + '.png'
+            # TODO make a negatives image random frame with 1 or 2 birds no drones->f2?
+            # TODO change f1 to have 1 OR 2 birds
             saved_configs.append(config)
-            saved_config_counter += 1
-            f0_filename = str(saved_config_counter) + '-f0.png'
-            f1_filename = str(saved_config_counter) + '-f1.png'
-            f2_filename = str(saved_config_counter) + '-f2.png'
+            saved_config_cnt += 1
+
+            # f1_filename = str(saved_config_counter) + '-f1.png'
+            # f2_filename = str(saved_config_counter) + '-f2.png'
+
+            annotation_str = save_frame(f0, 0, saved_config_cnt, d0_loc, d0_shape, positive=True)
+            annotation_str = save_frame(f1, 1, saved_config_cnt, d1_loc, d1_shape, positive=True)
+            annotation_str = save_frame(f2, 2, saved_config_cnt, d2_loc, d2_shape, positive=True)
 
             # TODO save to data description text positive drone images must follow this format
             #  "path/to/file.png 1 197 59 223 162" : boxcount, x, y, width, height
+            annotation_file.write(annotation_str)
 
             # im0.save(out_file_name)
             # cv2.imwrite(out_file_name, f0)
+
 
             print(b0, b1)
 
@@ -289,33 +297,37 @@ if __name__ == '__main__':
             # print(gen)
             # 31 end
 
+    annotation_file.close()
     t1 = time.time()  # End Time
 
     run_time = t1 - t0
 
     rt_hour, rt_min, rt_sec = (run_time / 3600), (run_time % 3600) / 60, (run_time % 3600) % 60
 
-    saved_img_count = len(os.listdir(output_dir))
+    saved_pos_img_count = len(os.listdir(output_dir + pos_img_dir))
+    saved_neg_img_count = len(os.listdir(output_dir + neg_img_dir))
 
     print("Total Run Time (h:m:s) : %i:%i:%i\n"
           "Configurations:\n"
-          "\tProcessed= %i\n"
-          "\tAccepted= %i\n"
-          "\tTotal Possible= %i\n"
-          "\tReject Probability= %d\n"
-          "\tAccept Probability= %d\n"
+          "\tProcessed = %i\n"
+          "\tAccepted = %i\n"
+          "\tTotal Possible = %i\n"
+          "\tReject Probability = %f\n"
+          "\tAccept Probability = %f\n"
           "Images: \n"
-          "\tSaved= %i\n"
-          "\tObject Positives= %i\n"
-          "\tObject Negatives= %i\n"
-          "\tBackground Videos= %i\n"
+          "\tSaved Pos. = %i\n"
+          "\tSaved Neg. = %i\n"
+          "\tObject Positives = %i\n"
+          "\tObject Negatives = %i\n"
+          "\tBackground Videos = %i\n"
           % (rt_hour, rt_min, rt_sec
              , gen
              , len(saved_configs)
              , total_configurations
              , 1.0 - acceptance_ratio
              , acceptance_ratio
-             , saved_img_count
+             , saved_pos_img_count
+             , saved_neg_img_count
              , len(drones_images)
              , len(birds_images)
              , len(bg_videos)
