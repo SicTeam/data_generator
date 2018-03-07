@@ -143,7 +143,7 @@ def paste_object(object_to_paste, background, position):
         print(alpha_background[:int(y2 - y1), :int(x2 - x1)].shape)
         pass
 
-    return position, background
+    return position, background, bg_region
 
 
 def load_and_resize(obj_file_name, target_size):
@@ -163,7 +163,7 @@ def load_and_resize(obj_file_name, target_size):
 if __name__ == '__main__':
 
     t0 = time.time()  # Start Time
-
+    annotation_file = open(output_dir)
     for config in configurations:
         # 8 foreach (d, g, s, v) ∈ D × G × S × V do
 
@@ -205,7 +205,7 @@ if __name__ == '__main__':
             # TODO SAVE Boundingbox format top corner x y width height
 
             # 14 overlay f0 with d in position p0
-            d0_loc, f0 = paste_object(d0, f0, p0)
+            d0_loc, f0, d0_shape = paste_object(d0, f0, p0)
 
             # 15 draw (p1, s1, f1) in the same way
             p1, s1 = get_pos_and_size(g, s)
@@ -227,13 +227,13 @@ if __name__ == '__main__':
             d1, d1width, d1height = load_and_resize(d, s1)
 
             # 19 overlay f1 with d in position p1
-            d1_loc, f1 = paste_object(d1, f1, p1)
+            d1_loc, f1, d1_shape = paste_object(d1, f1, p1)
 
             # 20 resize b0 with respect to sb,0
             bird0, _, _ = load_and_resize(b0, sb0)
 
             # 21 overlay f1 with b0 in position pb,0
-            _, f1 = paste_object(bird0, f1, pb0)
+            _, f1, _ = paste_object(bird0, f1, pb0)
 
             # 22 draw (p2, s2, f2) in the same way
             p2, s2 = get_pos_and_size(g, s)
@@ -250,13 +250,13 @@ if __name__ == '__main__':
             d2, d2width, d2height = load_and_resize(d, s2)
 
             # 26 overlay f2 with d in position p2
-            d2_loc, f2 = paste_object(d2, f2, p2)
+            d2_loc, f2, d2_shape = paste_object(d2, f2, p2)
 
             # 27 resize b1 with respect to sb,1
             bird1, _, _ = load_and_resize(b1, sb1)
 
             # 28 overlay f1 with b1 in position pb,1
-            _, f1 = paste_object(bird1, f1, pb1)
+            _, f1, _ = paste_object(bird1, f1, pb1)
 
             # 30 save f0, f1, f2 into the data set
 
@@ -274,6 +274,8 @@ if __name__ == '__main__':
             saved_configs.append(config)
             saved_config_counter += 1
             f0_filename = str(saved_config_counter) + '-f0.png'
+            f1_filename = str(saved_config_counter) + '-f1.png'
+            f2_filename = str(saved_config_counter) + '-f2.png'
 
             # TODO save to data description text positive drone images must follow this format
             #  "path/to/file.png 1 197 59 223 162" : boxcount, x, y, width, height
