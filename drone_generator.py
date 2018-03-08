@@ -18,32 +18,26 @@ bins = np.concatenate((pd.cut(np.arange(sz_lower_bound, sz_mid_point), 14, retbi
 size_intervals = [(bins[i], bins[i + 1]) for i in range(len(bins) - 1)]
 # print(size_intervals, len(size_intervals))
 
-# 2 D ← foregrounds of drone images
-# drones_images = ["drone3", "drone2", "drone1"]
+# D ← foregrounds of drone images
 drones_path = './' + 'drones' + '/'
-# drones_images = os.listdir(drones_path)
 drones_images = [drones_path + f for f in os.listdir(drones_path)]
 
-# 3 B ← foregrounds of bird images
+# B ← foregrounds of bird images
 birds_path = './' + 'birds' + '/'
-# bird_images = os.listdir('./birds')
 birds_images = [birds_path + f for f in os.listdir(birds_path)]
 
-# 4 V ← background videos
+# V ← background videos
 bg_videos_path = './' + 'backgrounds' + '/'
-# bg_videos = os.listdir('./backgrounds')
 bg_videos = [bg_videos_path + f for f in os.listdir(bg_videos_path)]
-
 bg_video_dim = (800, 800)
 
-# 5 R ← # of rows that the image will be divided into
+# R ← # of rows that the image will be divided into
 num_rows = 12
 
-# 6 C ← # of columns that the image will be divided into
+# C ← # of columns that the image will be divided into
 num_cols = 10
 
-# 7 G ← R × C grid
-
+# G ← R × C grid
 # Building the grid outside of the main loop requires
 # assuming the bg_video_dim is the same for all videos
 # and known before data generation
@@ -98,7 +92,6 @@ def frame_grabber(src_video):
 
 def get_pos_and_size(grid_position, size_interval):
     # Random Point x,y in g range(x, x+80), g range(y,y+80)
-    # TODO ensure that x and y are < 800
     x_pos = np.random.uniform(low=grid_position[1], high=min(grid_position[1] + grid_img_col, bg_video_dim[1]))
     y_pos = np.random.uniform(low=grid_position[0], high=min(grid_position[0] + grid_img_row, bg_video_dim[1]))
     size = np.random.uniform(low=size_interval[0], high=size_interval[1])
@@ -152,7 +145,7 @@ def load_and_resize(obj_file_name, target_size):
     obj = cv2.cvtColor(obj, cv2.COLOR_BGRA2RGBA)
     source_size_smallest_edge = min(obj.shape[:2])
     scaled_size = target_size / source_size_smallest_edge
-    #
+
     if target_size < source_size_smallest_edge:
         obj = cv2.resize(obj, None, fx=scaled_size, fy=scaled_size, interpolation=cv2.INTER_LINEAR)
     else:
@@ -163,28 +156,33 @@ def load_and_resize(obj_file_name, target_size):
 def save_frame(frame, number, config_number, location, shape, positive):
     x, y = location
     height, width = shape
+    filename = str(config_number) + '-f' + str(number) + '.png'
+
     if positive:
         img_dir = pos_img_dir
+        cv2.imwrite(output_dir + img_dir + filename, frame)
+        return "%s%s 1 %s %s %s %s\n" % (img_dir, filename, x, y, width, height)
     else:
         img_dir = neg_img_dir
-    filename = str(config_number) + '-f' + str(number) + '.png'
-    cv2.imwrite(output_dir + pos_img_dir + filename, frame)
-    return "%s%s 1 %s %s %s %s\n" % (img_dir, filename, x, y, width, height)
+        cv2.imwrite(output_dir + img_dir + filename, frame)
+        return "%s%s\n" % (img_dir, filename)
 
 
 if __name__ == '__main__':
 
     t0 = time.time()  # Start Time
-    annotation_file = open(output_dir + "drone.txt", 'w')
+    pos_annotation_file = open(output_dir + "drone.txt", 'w')
+    neg_annotation_file = open(output_dir + "bg.txt", 'w')
+
     for config in configurations:
-        # 8 foreach (d, g, s, v) ∈ D × G × S × V do
+        # foreach (d, g, s, v) ∈ D × G × S × V do
 
         # print(config)
 
         # 9 ignore this configuration with probability
         # p = 1 − Max. allowed size/ Total size for all configurations , and continue
-        accept_config = True  # np.random.choice(a=[False, True],
-        #   p=[1.0 - acceptance_ratio, acceptance_ratio])
+        accept_config = np.random.choice(a=[False, True],
+                                         p=[1.0 - acceptance_ratio, acceptance_ratio])
 
         gen += 1  # Generation counter
 
@@ -253,7 +251,6 @@ if __name__ == '__main__':
             bird0, _, _ = load_and_resize(b0, sb0)
 
             # draw a random bird b1 from B and random position
-
             b1 = np.random.choice(birds_images)
             gb1 = grid[np.random.randint(low=0, high=len(grid))]
 
@@ -268,25 +265,35 @@ if __name__ == '__main__':
             # overlay f1 with b0 in position pb,0
             _, f1, _ = paste_object(bird0, f1, pb0)
 
-            # overlay f1 with b1 in position pb,1
-            _, f1, _ = paste_object(bird1, f1, pb1)
+            extra_bird = np.random.choice([True, False])
+            if extra_bird:
+                # overlay f1 with b1 in position pb,1
+                _, f1, _ = paste_object(bird1, f1, pb1)
 
-            # save f0, f1, f2 into the data set
-            # TODO make a negatives image random frame with 1 or 2 birds no drones->f2?
-            # TODO change f1 to have 1 OR 2 birds
+            # grab random frame from v f4
+            _, _, _, f3 = frame_grabber(v)
+
+            # overlay f4 with b0 in position pb,0
+            _, f3, _ = paste_object(bird0, f3, pb0)
+
+            extra_bird = np.random.choice([True, False])
+            if extra_bird:
+                # overlay f3 with b1 in position pb,1
+                _, f3, _ = paste_object(bird1, f3, pb1)
+
+            # save f0, f1, f2, f3 into the data set
+
             saved_configs.append(config)
             saved_config_cnt += 1
 
-            # f1_filename = str(saved_config_counter) + '-f1.png'
-            # f2_filename = str(saved_config_counter) + '-f2.png'
-
             annotation_str = save_frame(f0, 0, saved_config_cnt, d0_loc, d0_shape, positive=True)
-            annotation_str = save_frame(f1, 1, saved_config_cnt, d1_loc, d1_shape, positive=True)
-            annotation_str = save_frame(f2, 2, saved_config_cnt, d2_loc, d2_shape, positive=True)
+            annotation_str += save_frame(f1, 1, saved_config_cnt, d1_loc, d1_shape, positive=True)
+            annotation_str += save_frame(f2, 2, saved_config_cnt, d2_loc, d2_shape, positive=True)
+            # save to data description text positive drone images must follow this format
+            # "path/to/file.png 1 197 59 223 162" : boxcount, x, y, width, height
+            pos_annotation_file.write(annotation_str)
 
-            # TODO save to data description text positive drone images must follow this format
-            #  "path/to/file.png 1 197 59 223 162" : boxcount, x, y, width, height
-            annotation_file.write(annotation_str)
+            neg_annotation_file.write(save_frame(f3, 3, saved_config_cnt, _, _, positive=False))
 
             # im0.save(out_file_name)
             # cv2.imwrite(out_file_name, f0)
@@ -297,7 +304,8 @@ if __name__ == '__main__':
             # print(gen)
             # 31 end
 
-    annotation_file.close()
+    pos_annotation_file.close()
+    neg_annotation_file.close()
     t1 = time.time()  # End Time
 
     run_time = t1 - t0
