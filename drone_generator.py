@@ -106,9 +106,6 @@ def get_pos_and_size(grid_position, size_interval):
 
 
 def paste_object(object_to_paste, background, position):
-    # TODO REMOVE? x_offset, y_offset = int(min(position[1], bg_video_dim[1])), int(min(position[0], bg_video_dim[0]))
-    # TODO REMOVE? y1, y2 = int(y_offset), int(min(y_offset + object_to_paste.shape[0], bg_video_dim[0]-1))
-    # TODO REMOVE? x1, x2 = int(x_offset), int(min(x_offset + object_to_paste.shape[1], bg_video_dim[1]-1))
     # TODO pastes object outside of bounds of background image and moves pixels down.
     # either needs to skip that region of object or object position should be
     # based on object resize
@@ -201,76 +198,80 @@ if __name__ == '__main__':
             # Unpack configuration : (d, g, s, v)
             # d - drone image filename
             # g - grid coordinates to place drone
-            # s - size interval for resizing drone TODO and birds?
+            # s - size interval for resizing drone
             # v - background video filename
             d, g, s, v = config
 
-            # print(d, g, s, v)
+            # draw a random position p0 in g
+            # draw a random size s0 for smaller edge of the drone from s
+            p0, s0 = get_pos_and_size(g, s)
 
-            # 10 draw a random position p0 in g
-            # 11 draw a random size s0 for smaller edge of the drone from s
-            p0, s0 = get_pos_and_size(g, s)  # TODO save this for bounding box of drone
-
-            # 12 draw a random frame f0 from v
+            # draw a random frame f0 from v
             _, _, _, f0 = frame_grabber(v)
 
-            # 13 resize d with respect to s0
+            # resize d with respect to s0
             d0, drone_w, drone_h = load_and_resize(d, s0)
 
-            # 14 overlay f0 with d in position p0
+            # overlay f0 with d in position p0
             d0_loc, f0, d0_shape = paste_object(d0, f0, p0)
 
-            # 15 draw (p1, s1, f1) in the same way
+            # draw (p1, s1, f1) in the same way
             p1, s1 = get_pos_and_size(g, s)
             _, _, _, f1 = frame_grabber(v)
 
-            # 16 draw a random bird b0 from B
-            b0 = np.random.choice(birds_images)
-            gb0 = grid[np.random.randint(low=0, high=len(grid))]
+            # resize d with respect to s1
+            d1, d1width, d1height = load_and_resize(d, s1)
 
-            # 17 draw (pb,0, sb,0) for bird where sb,0 is drawn from smaller half of S
+            # overlay f1 with d in position p1
+            d1_loc, f1, d1_shape = paste_object(d1, f1, p1)
+
+            # draw (p2, s2, f2) in the same way
+            p2, s2 = get_pos_and_size(g, s)
+            _, _, _, f2 = frame_grabber(v)
+
+            # resize d with respect to s2
+            d2, d2width, d2height = load_and_resize(d, s2)
+
+            # overlay f2 with d in position p2
+            d2_loc, f2, d2_shape = paste_object(d2, f2, p2)
+
+            # split size interval list at middle
             sz_mid_idx = int(len(size_intervals) / 2) + 1
             sb_lower = size_intervals[:sz_mid_idx][np.random.randint(low=0, high=sz_mid_idx)]
             sb_upper = size_intervals[sz_mid_idx:][np.random.randint(low=0, high=len(size_intervals) - sz_mid_idx)]
 
+            # draw a random bird b0 from B and a random position
+            b0 = np.random.choice(birds_images)
+
+            # draw (pb,0, sb,0) for bird
+            #   where pb,0 is a random grid position from grid list
+            #   where sb,0 is drawn from smaller half of S
+            gb0 = grid[np.random.randint(low=0, high=len(grid))]
             pb0, sb0 = get_pos_and_size(gb0, sb_lower)
 
-            # 18 resize d with respect to s1
-            d1, d1width, d1height = load_and_resize(d, s1)
-
-            # 19 overlay f1 with d in position p1
-            d1_loc, f1, d1_shape = paste_object(d1, f1, p1)
-
-            # 20 resize b0 with respect to sb,0
+            # resize b0 with respect to sb,0
             bird0, _, _ = load_and_resize(b0, sb0)
 
-            # 21 overlay f1 with b0 in position pb,0
-            _, f1, _ = paste_object(bird0, f1, pb0)
+            # draw a random bird b1 from B and random position
 
-            # 22 draw (p2, s2, f2) in the same way
-            p2, s2 = get_pos_and_size(g, s)
-            _, _, _, f2 = frame_grabber(v)
-
-            # 23 draw a random bird b1 from B and random position
             b1 = np.random.choice(birds_images)
             gb1 = grid[np.random.randint(low=0, high=len(grid))]
 
-            # 24 draw (pb,1, sb,1) for bird where sb,1 is drawn from greater half of S
+            # draw (pb,1, sb,1) for bird
+            #   where pb,1 is a random grid position from grid list
+            #   where sb,1 is drawn from greater half of S
             pb1, sb1 = get_pos_and_size(gb1, sb_upper)
 
-            # 25 resize d with respect to s2
-            d2, d2width, d2height = load_and_resize(d, s2)
-
-            # 26 overlay f2 with d in position p2
-            d2_loc, f2, d2_shape = paste_object(d2, f2, p2)
-
-            # 27 resize b1 with respect to sb,1
+            # resize b1 with respect to sb,1
             bird1, _, _ = load_and_resize(b1, sb1)
 
-            # 28 overlay f1 with b1 in position pb,1
+            # overlay f1 with b0 in position pb,0
+            _, f1, _ = paste_object(bird0, f1, pb0)
+
+            # overlay f1 with b1 in position pb,1
             _, f1, _ = paste_object(bird1, f1, pb1)
 
-            # 30 save f0, f1, f2 into the data set
+            # save f0, f1, f2 into the data set
             # TODO make a negatives image random frame with 1 or 2 birds no drones->f2?
             # TODO change f1 to have 1 OR 2 birds
             saved_configs.append(config)
@@ -290,8 +291,7 @@ if __name__ == '__main__':
             # im0.save(out_file_name)
             # cv2.imwrite(out_file_name, f0)
 
-
-            print(b0, b1)
+            # print(b0, b1)
 
             # print(saved_config_counter, gen, s, d, b)
             # print(gen)
