@@ -1,3 +1,85 @@
+"""
+The MIT License
+
+Copyright (c) 2018 SicTeam - (Portland State University)
+SicTeam is: Israel Bond, Brandon Craig, Cody Herberholz, Khuong Nguyen,
+            Dakota Sanchez, Samuel Strba, Elijah Whitham-Powell
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+The purpose of this python program is to generate training data for use with
+opencv's Haar Cascade classifier. It implements a modified version of the algorithm
+within the following paper.
+      Title:            Using Deep Networks for Drone Detection
+      Authors:          Aker, Cemal
+                        Kalkan, Sinan
+      Publication:      eprint arXiv:1706.05726
+      Publication Date: 06/2017
+      Origin:           ARXIV
+      URL:              https://arxiv.org/abs/1706.05726
+
+The modified algorithm is as follows,
+Algorithm # 1: The algorithm for preparing the data-set:
+     1 S ← predefined size intervals\n
+     2 D ← foregrounds of drone images\n
+     3 B ← foregrounds of bird images\n
+     4 V ← background videos\n
+     5 R ←  # of rows that the image will be divided into\n
+     6 C ←  # of columns that the image will be divided into\n
+     7 G ← R × C grid\n
+     8 foreach(d, g, s, v) ∈ D × G × S × V do\n
+     9    ignore this configuration with probability
+             p = 1 − Max.allowed size / Total size for all configurations
+          and continue\n
+    10    draw a random position p0 in g\n
+    11    draw a random size s0 for smaller edge of the drone from s\n
+    12    draw a random frame f0 from v\n
+    13    resize d with respect to s0\n
+    14    overlay f0 with d in position p0\n
+    15    draw (p1, s1, f1) in the same way\n
+    16    resize d with respect to s1\n
+    17    overlay f1 with d in position p1\n
+    18    draw (p2, s2, f2) in the same way\n
+    19    resize d with respect to s2\n
+    19    overlay f2 with d in position p2\n
+    20    split size interval list at middle\n
+    21    draw a random bird b0 from B and a random position\n
+    22    draw (pb,0, sb,0) for bird b0\n
+             where pb,0 is a random grid position from grid list\n
+             where sb,0 is drawn from smaller half of S\n
+    23    resize b0 with respect to sb,0\n
+    24    draw a random bird b1 from B and random position\n
+    25    draw (pb,1, sb,1) for bird b1\n
+               where pb,1 is a random grid position from grid list\n
+              where sb,1 is drawn from greater half of S\n
+    26    resize b1 with respect to sb,1\n
+    27    overlay f1 with b0 in position pb,0\n
+    28    randomly decide to overlay a second bird\n
+    29    overlay f1 with b1 in position pb,1\n
+    30    grab random frame from v f3\n
+    31    overlay f3 with b0 in position pb,0\n
+    32    randomly choose to add a second bird\n
+    33    overlay f3 with b1 in position pb,1\n
+    34    save f0, f1, f2, f3 into the data set\n
+    35 End Loop\n
+
+"""
 import argparse
 import itertools as it
 import os
@@ -10,17 +92,18 @@ import numpy as np
 import pandas as pd
 
 
-def frame_grabber(src_video):
+def frame_grabber(src_video: str):
     """
     Grabs and returns a random frame from a provided video.
+
     Args:
-        src_video: path to file
+        src_video: str : path to file
 
     Returns:
-        width : pixels
-        height : pixels
-        frame_number : the frame number selected from src_video
-        cv2_im : the frame as an array-like object
+        width: pixels : int
+        height: pixels : int
+        frame_number: the frame number selected from src_video : int
+        cv2_im: the frame as an array-like object
     """
     bg = cv2.VideoCapture(src_video)
     # fps = bg.get(cv2.CAP_PROP_FPS)
@@ -37,13 +120,18 @@ def frame_grabber(src_video):
 
 def paste_object(object_to_paste, background, position):
     """
+    Pastes and object onto a background image at a given position.
+
 
     Args:
-        object_to_paste:
-        background:
-        position:
+        object_to_paste: array-like : shape { height, width, channels }
+        background: array-like : shape { height, width, channels }
+        position: tuple :  (row, col)
 
     Returns:
+        (position[1], position[0]): tuple, (x,y) - top corner of pasted object
+        background: array-like, shape { height, width, channels } - resulting image
+        bg_region: tuple, (height, width) - pasted region for annotation
 
     """
     x_offset, y_offset = position[1], position[0]
@@ -84,13 +172,16 @@ def paste_object(object_to_paste, background, position):
 
 def load_and_resize(obj_file_name, target_size):
     """
-
+    Loads an image from file path and re-sizes its smallest edge to the size
+    provided.
     Args:
-        obj_file_name:
-        target_size:
+        obj_file_name: str, path to image file
+        target_size: float or int, target size of smallest edge
 
     Returns:
-
+        obj: array-like, shape { new width, new height }
+        obj.shape[0]: int, width
+        obj.shape[1]: int, height
     """
     # Resize object with respect to size, size becomes smaller side of object
     obj = cv2.imread(obj_file_name, -1)  # -1 for unchanged - preserves alpha channel
@@ -109,52 +200,59 @@ class Builder:
     """
         This class implements the following algorithm to generate training images for drone detection.
         The output is a set of positive images and a set of negative images with corresponding
-        annotation files formatted for opencv_traincascade Haar Cascade classifier.
+        annotation files formatted for opencv_traincascade Haar Cascade classifier. The algorithm
+        was modified from a data generation algorithm specified in,
+            Title:    Using Deep Networks for Drone Detection
+            Authors:  Aker, Cemal
+                      Kalkan, Sinan
+            Publication: eprint arXiv:1706.05726
+            Publication Date: 06/2017
+            Origin:	ARXIV
+            URL: https://arxiv.org/abs/1706.05726
 
         Algorithm # 1: The algorithm for preparing the data-set:
-              1 S ← predefined size intervals
-              2 D ← foregrounds of drone images
-              3 B ← foregrounds of bird images
-              4 V ← background videos
-              5 R ←  # of rows that the image will be divided into
-              6 C ←  # of columns that the image will be divided into
-              7 G ← R × C grid
-              8 foreach(d, g, s, v) ∈ D × G × S × V do
+              1 S ← predefined size intervals\n
+              2 D ← foregrounds of drone images\n
+              3 B ← foregrounds of bird images\n
+              4 V ← background videos\n
+              5 R ←  # of rows that the image will be divided into\n
+              6 C ←  # of columns that the image will be divided into\n
+              7 G ← R × C grid\n
+              8 foreach(d, g, s, v) ∈ D × G × S × V do\n
               9    ignore this configuration with probability
                        p = 1 − Max.allowed size / Total size for all configurations
-                   and continue
-             10    draw a random position p0 in g
-             11    draw a random size s0 for smaller edge of the drone from s
-             12    draw a random frame f0 from v
-             13    resize d with respect to s0
-             14    overlay f0 with d in position p0
-             15    draw (p1, s1, f1) in the same way
-             16    resize d with respect to s1
-             17    overlay f1 with d in position p1
-             18    draw (p2, s2, f2) in the same way
-             19    resize d with respect to s2
-             19    overlay f2 with d in position p2
-             20    split size interval list at middle
-             21    draw a random bird b0 from B and a random position
-             22    draw (pb,0, sb,0) for bird b0
-                       where pb,0 is a random grid position from grid list
-                       where sb,0 is drawn from smaller half of S
-             23    resize b0 with respect to sb,0
-             24    draw a random bird b1 from B and random position
-             25    draw (pb,1, sb,1) for bird b1
-                       where pb,1 is a random grid position from grid list
-                       where sb,1 is drawn from greater half of S
-             26    resize b1 with respect to sb,1
-             27    overlay f1 with b0 in position pb,0
-             28    randomly decide to overlay a second bird
-             29    overlay f1 with b1 in position pb,1
-             30    grab random frame from v f3
-             31    overlay f3 with b0 in position pb,0
-             32    randomly choose to add a second bird
-             33    overlay f3 with b1 in position pb,1
-             34    save f0, f1, f2, f3 into the data set
-             35 End Loop
-
+                   and continue\n
+             10    draw a random position p0 in g\n
+             11    draw a random size s0 for smaller edge of the drone from s\n
+             12    draw a random frame f0 from v\n
+             13    resize d with respect to s0\n
+             14    overlay f0 with d in position p0\n
+             15    draw (p1, s1, f1) in the same way\n
+             16    resize d with respect to s1\n
+             17    overlay f1 with d in position p1\n
+             18    draw (p2, s2, f2) in the same way\n
+             19    resize d with respect to s2\n
+             19    overlay f2 with d in position p2\n
+             20    split size interval list at middle\n
+             21    draw a random bird b0 from B and a random position\n
+             22    draw (pb,0, sb,0) for bird b0\n
+                       where pb,0 is a random grid position from grid list\n
+                       where sb,0 is drawn from smaller half of S\n
+             23    resize b0 with respect to sb,0\n
+             24    draw a random bird b1 from B and random position\n
+             25    draw (pb,1, sb,1) for bird b1\n
+                       where pb,1 is a random grid position from grid list\n
+                       where sb,1 is drawn from greater half of S\n
+             26    resize b1 with respect to sb,1\n
+             27    overlay f1 with b0 in position pb,0\n
+             28    randomly decide to overlay a second bird\n
+             29    overlay f1 with b1 in position pb,1\n
+             30    grab random frame from v f3\n
+             31    overlay f3 with b0 in position pb,0\n
+             32    randomly choose to add a second bird\n
+             33    overlay f3 with b1 in position pb,1\n
+             34    save f0, f1, f2, f3 into the data set\n
+             35 End Loop\n
     """
 
     def __init__(self,
@@ -169,23 +267,28 @@ class Builder:
                  num_cols=10,
                  output_dir='./output-'):
         """
+        Initializes the data builder object for data generation.
+
         Args:
-            max_configs:
-            sz_lower_bound:
-            sz_upper_bound:
-            drones_path:
-            birds_path:
-            bg_videos_path:
-            bg_video_dim:
-            num_rows:
-            num_cols:
-            output_dir:
+            max_configs: int, maximum number of configurations to save - NOTE: each configuration generates 4 images (3 pos, 1 negative)
+            sz_lower_bound: int, lower bound for sizing intervals
+            sz_upper_bound: int, upper bound for sizing intervals
+            drones_path: str, path to positive objects with backgrounds removed
+            birds_path: str, path to negative objects with backgrounds removed
+            bg_videos_path: str, path to background videos
+            bg_video_dim: (int, int), shape of background videos in pixels (height, width)
+            num_rows: int, number of rows to split background into for pasting
+            num_cols: int, number of column to split background into for pasting
+            output_dir: str, path to dir where output is saved.
         """
+
         # S ← predefined size intervals
         self.sz_lower_bound = sz_lower_bound
         self.sz_upper_bound = sz_upper_bound
         self.sz_interval_length = self.sz_upper_bound - self.sz_lower_bound
         self.sz_interval_midpoint = int(self.sz_interval_length / 2)
+        # Generate uniform intervals within the given upper and lower bounds with more in the lower half than in the upper half
+
         bins = np.concatenate((pd.cut(np.arange(self.sz_lower_bound, self.sz_interval_midpoint), 14, retbins=True)[1],
                                pd.cut(np.arange(self.sz_interval_midpoint, self.sz_upper_bound), 5, retbins=True)[1]))
         self.size_intervals = [(bins[i], bins[i + 1]) for i in range(len(bins) - 1)]
@@ -243,12 +346,15 @@ class Builder:
 
     def get_pos_and_size(self, grid_position, size_interval):
         """
+        Get a random position from within the grid coordinates provided
 
         Args:
-            grid_position:
-            size_interval:
+            grid_position: (int, int), the grid location to select exact paste coordinates (col, row)
+            size_interval: (float, float), size interval from which to select a random size.
 
         Returns:
+            (x_pos, y_pos): (int, int), exact random x,y position from within the selected grid position.
+            size: float, randomly selected size from size interval.
 
         """
         # Random Point x,y in g range(x, x+80), g range(y,y+80)
@@ -259,14 +365,15 @@ class Builder:
 
     def save_frame(self, frame, number, config_number, location, shape, positive):
         """
+        Saves a given frame to file.
 
         Args:
-            frame:
-            number:
-            config_number:
-            location:
-            shape:
-            positive:
+            frame: array-like, shape { rows, cols, channels }
+            number: int, frame number for naming (0-3)
+            config_number: int, saved configuration number for naming
+            location: (int, int), top right corner of bounding box for pasted object (x, y)
+            shape: (int, int), height and width of the bounding box from the top right corner (height, width)
+            positive: bool, indicates if the file should be saved as a positive or negative example image
 
         Returns:
 
@@ -517,11 +624,14 @@ if __name__ == '__main__':
                         default='./output-',
                         help='Output directory to save resulting data set')
 
+    # test mode
     parser.add_argument('--test_mode',
                         action='store_true')
 
+    # get arguments
     args = parser.parse_args(sys.argv[1:])
 
+    # make builder object
     builder = Builder(max_configs=args.max_configs,
                       sz_lower_bound=args.min_size,
                       sz_upper_bound=args.max_size,
@@ -533,4 +643,5 @@ if __name__ == '__main__':
                       num_cols=args.num_cols,
                       output_dir=args.out_dir)
 
+    # execute builder algorithm
     builder.run(testing_mode=args.test_mode)
