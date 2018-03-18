@@ -1,5 +1,5 @@
 # This is a helper script to automate the removal of backgrounds from drone images.
-
+# Original Source: https://stackoverflow.com/questions/29313667/how-do-i-remove-the-background-from-this-kind-of-image
 
 
 import os
