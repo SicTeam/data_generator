@@ -51,3 +51,6 @@ optional arguments:
   --out_dir OUT_DIR     Output directory to save resulting data set
   --test_mode
 ```
+
+# Background Remover
+This is a helper script to remove backgrounds from images.
